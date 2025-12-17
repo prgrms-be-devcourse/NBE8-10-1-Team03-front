@@ -1,6 +1,6 @@
-docker run --rm -it \
+docker run -d --rm -it \
+  --name coffee-dev \
   -p 3000:3000 \
   -v "$(pwd)":/app \
   -w /app \
-  node:24-alpine \
-  sh -lc "npm install && npm run dev -- --hostname 0.0.0.0 --port 3000"
+  node:24-alpine;
