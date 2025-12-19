@@ -4,7 +4,7 @@ export type Product = {
   type: string; // "coffee" 등
   cost: number;
   description: string;
-  imageId?: number | null;
+  imageId?: string | null;
 };
 
 export type ApiResponse<T> = {

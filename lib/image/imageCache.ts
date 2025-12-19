@@ -6,6 +6,12 @@ type CacheEntry = {
   expiresAt: number;    // epoch ms
 };
 
+type ImageId = string; // ✅ 변경
+
+function toKey(imageId: ImageId) {
+  return `${KEY_PREFIX}${imageId}`;
+}
+
 /** 만료된 캐시를 정리 (페이지 진입 시 1번 정도 호출 권장) */
 export function cleanupExpiredImageCache() {
   if (typeof window === "undefined") return;
@@ -29,40 +35,39 @@ export function cleanupExpiredImageCache() {
   }
 }
 
-export function getCachedImage(imageId: number): string | null {
+export function getCachedImage(imageId: ImageId): string | null {
   if (typeof window === "undefined") return null;
 
-  const key = `${KEY_PREFIX}${imageId}`;
-  const raw = localStorage.getItem(key);
+  const raw = localStorage.getItem(toKey(imageId));
   if (!raw) return null;
 
   try {
     const entry = JSON.parse(raw) as CacheEntry;
     if (Date.now() > entry.expiresAt) {
-      localStorage.removeItem(key);
+      localStorage.removeItem(toKey(imageId));
       return null;
     }
     return entry.dataUrl;
   } catch {
-    localStorage.removeItem(key);
+    localStorage.removeItem(toKey(imageId));
     return null;
   }
 }
 
-export function setCachedImage(imageId: number, dataUrl: string) {
+export function setCachedImage(imageId: ImageId, dataUrl: string) {
   if (typeof window === "undefined") return;
 
-  const key = `${KEY_PREFIX}${imageId}`;
+  const key = toKey(imageId);
   const entry: CacheEntry = { dataUrl, expiresAt: Date.now() + TTL_MS };
+
   try {
     localStorage.setItem(key, JSON.stringify(entry));
   } catch {
-    // 용량 초과 등 발생 시: 전체 청소 후 재시도(보수적으로)
     cleanupExpiredImageCache();
     try {
       localStorage.setItem(key, JSON.stringify(entry));
     } catch {
-      // 그래도 안 되면 캐시 포기
+      // 캐시 포기
     }
   }
 }

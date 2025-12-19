@@ -6,8 +6,8 @@ import type { Product } from "@/types/product";
 
 type Props = {
   product: Product;
-  imageUrl?: string | null;
-  onAdd: () => void;
+  imageUrl: string | null;
+  onAdd?: () => void; // ✅ optional
 };
 
 export function ProductRow({ product, imageUrl, onAdd }: Props) {
@@ -38,9 +38,11 @@ export function ProductRow({ product, imageUrl, onAdd }: Props) {
 
           {/* 오른쪽 추가 버튼 */}
           <div className="shrink-0">
-            <ColorButton color="white" onClick={onAdd}>
-              추가
-            </ColorButton>
+            {onAdd && (
+              <ColorButton color="white" onClick={onAdd}>
+                추가
+              </ColorButton>
+            )}
           </div>
         </div>
       </div>

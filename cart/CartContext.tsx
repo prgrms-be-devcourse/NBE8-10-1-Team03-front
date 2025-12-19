@@ -24,7 +24,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const idx = prev.findIndex((x) => x.productId === item.productId);
       if (idx >= 0) {
         const copy = [...prev];
-        copy[idx] = { ...copy[idx], qty: copy[idx].qty + 1 };
+        copy[idx] = { ...copy[idx], quantity: copy[idx].quantity + 1 };
         return copy;
       }
       return [...prev, item];
@@ -38,15 +38,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const changeQty = (productId: number, qty: number) => {
     setItems((prev) =>
       prev
-        .map((x) => (x.productId === productId ? { ...x, qty } : x))
-        .filter((x) => x.qty > 0)
+        .map((x) => (x.productId === productId ? { ...x, quantity: qty } : x))
+        .filter((x) => x.quantity > 0)
     );
   };
 
   const clear = () => setItems([]);
 
   const toOrderPayload = () => ({
-    items: items.map((x) => ({ productId: x.productId, qty: x.qty })),
+    items: items.map((x) => ({ productId: x.productId, qty: x.quantity })),
   });
 
   return (

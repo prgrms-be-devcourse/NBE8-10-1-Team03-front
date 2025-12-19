@@ -5,18 +5,19 @@ import { fetchProductImages } from "@/lib/api/products";
 import { cleanupExpiredImageCache, getCachedImage, setCachedImage } from "@/lib/image/imageCache";
 import { toDataUrl } from "@/lib/image/imageCodec";
 
-export function useProductImages(imageIds: Array<number | null | undefined>) {
-  const [map, setMap] = React.useState<Record<number, string>>({});
+type ImageMap = Record<string, string>;
+export function useProductImages(imageIds: string[]): ImageMap {
+  const [map, setMap] = React.useState<Record<string, string>>({});
 
   React.useEffect(() => {
     cleanupExpiredImageCache();
 
-    const unique = Array.from(new Set(imageIds.filter((v): v is number => typeof v === "number")));
+    const unique = Array.from(new Set(imageIds.filter((v): v is string => typeof v === "string")));
     if (unique.length === 0) return;
 
     // 1) 캐시에서 먼저 채움
-    const cached: Record<number, string> = {};
-    const missing: number[] = [];
+    const cached: Record<string, string> = {};
+    const missing: string[] = [];
 
     for (const id of unique) {
       const hit = getCachedImage(id);
@@ -37,7 +38,7 @@ export function useProductImages(imageIds: Array<number | null | undefined>) {
         const data = await fetchProductImages(missing); // { "1": "...", ... }
         if (cancelled) return;
 
-        const next: Record<number, string> = {};
+        const next: Record<string, string> = {};
         for (const id of missing) {
           const raw = (data as any)[String(id)];
           const url = toDataUrl(raw);

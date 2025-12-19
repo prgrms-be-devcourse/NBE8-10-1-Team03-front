@@ -1,5 +1,5 @@
 import { ProductsClient } from "./productsClient";
-
+import { CartProvider } from "@/cart/CartContext";
 export default function OrdersPage() {
   return (
     <main className="min-h-dvh bg-neutral-50 p-6">
@@ -10,7 +10,9 @@ export default function OrdersPage() {
         </p>
 
         <div className="mt-6">
-          <ProductsClient />
+          <CartProvider>
+            <ProductsClient />
+          </CartProvider>
         </div>
       </div>
     </main>

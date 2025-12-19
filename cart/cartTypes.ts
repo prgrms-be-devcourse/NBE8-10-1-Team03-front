@@ -4,7 +4,7 @@ export type CartItem = {
   productId: number;
   name: string;
   cost: number;
-  qty: number;
+  quantity: number;
   type: string;
 };
 
@@ -13,7 +13,7 @@ export function toCartItem(p: Product): CartItem {
     productId: p.id,
     name: p.name,
     cost: p.cost,
-    qty: 1,
+    quantity: 1,
     type: p.type,
   };
 }
