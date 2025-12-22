@@ -79,7 +79,6 @@ function Drawer({
       base.push(
         { href: "/admin/orders", label: "주문 관리" },
         { href: "/admin/products", label: "물품 관리" },
-        { href: "/admin/users", label: "유저 관리(미구현)" }
       );
     }
     return base;
@@ -92,9 +91,9 @@ function Drawer({
     try {
       // 서버 로그인 엔드포인트는 프로젝트에 맞춰 바꾸세요.
       // 예: POST /admin/login
-      const accessToken = await apiFetch<string>("/admin/login", {
+      const accessToken = await apiFetch<string>("/login", {
         method: "POST",
-        body: JSON.stringify({ id: adminId, password: adminPw }),
+        body: { userId: adminId, password: adminPw }, 
       });
 
       setAccessToken(accessToken);

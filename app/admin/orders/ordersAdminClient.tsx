@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
-import { ColorButton } from "@/components/ui/buttons/ColorButton";
 
 type Order = {
   orderId: number;
+  shipmentId: number | null; // ✅ 추가
   email: string;
   address: string;
   zipcode: number;
@@ -49,6 +49,14 @@ function OrderBlock({ o }: { o: Order }) {
   );
 }
 
+function DateHeader({ date }: { date: string }) {
+  return (
+    <div className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-900">
+      {date}
+    </div>
+  );
+}
+
 export default function OrdersAdminClient() {
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -58,8 +66,7 @@ export default function OrdersAdminClient() {
     setLoading(true);
     setError(null);
     try {
-      // 🔴 핵심 변경
-      const data = await apiFetch<Order[]>("/orders", { method: "GET" });
+      const data = await apiFetch<Order[]>("/admin/orders", { method: "GET" });
       setOrders(data);
     } catch (e: any) {
       setError(e?.message ?? "unknown error");
@@ -73,27 +80,31 @@ export default function OrdersAdminClient() {
     reload();
   }, []);
 
-  // email -> date -> orders[]
+  // email -> shipmentKey -> orders[]
   const grouped = useMemo(() => {
     const map = new Map<string, Map<string, Order[]>>();
 
     for (const o of orders) {
       const email = o.email ?? "(unknown)";
-      const date = toDateOnly(o.orderDate);
+      const shipmentKey =
+        o.shipmentId == null ? "NO_SHIPMENT" : String(o.shipmentId);
 
       if (!map.has(email)) map.set(email, new Map());
-      const dateMap = map.get(email)!;
+      const shipmentMap = map.get(email)!;
 
-      if (!dateMap.has(date)) dateMap.set(date, []);
-      dateMap.get(date)!.push(o);
+      if (!shipmentMap.has(shipmentKey)) shipmentMap.set(shipmentKey, []);
+      shipmentMap.get(shipmentKey)!.push(o);
     }
 
-    for (const [, dateMap] of map) {
-      for (const [date, list] of dateMap) {
-        list.sort((a, b) =>
-          (b.orderDate ?? "").localeCompare(a.orderDate ?? "")
-        );
-        dateMap.set(date, list);
+    // shipment 내부 정렬: orderDate desc, 같으면 orderId desc
+    for (const [, shipmentMap] of map) {
+      for (const [shipmentKey, list] of shipmentMap) {
+        list.sort((a, b) => {
+          const c = (b.orderDate ?? "").localeCompare(a.orderDate ?? "");
+          if (c !== 0) return c;
+          return (b.orderId ?? 0) - (a.orderId ?? 0);
+        });
+        shipmentMap.set(shipmentKey, list);
       }
     }
 
@@ -103,6 +114,19 @@ export default function OrdersAdminClient() {
   const sortedEmails = useMemo(() => {
     return Array.from(grouped.keys()).sort((a, b) => a.localeCompare(b));
   }, [grouped]);
+
+  const sortedShipmentKeys = (shipmentMap: Map<string, Order[]>) => {
+    // NO_SHIPMENT은 맨 아래로, 나머지는 숫자 오름차순
+    return Array.from(shipmentMap.keys()).sort((a, b) => {
+      if (a === "NO_SHIPMENT" && b === "NO_SHIPMENT") return 0;
+      if (a === "NO_SHIPMENT") return 1;
+      if (b === "NO_SHIPMENT") return -1;
+      return Number(a) - Number(b);
+    });
+  };
+
+  const totalCountByEmail = (shipmentMap: Map<string, Order[]>) =>
+    Array.from(shipmentMap.values()).reduce((acc, list) => acc + list.length, 0);
 
   return (
     <section className="w-full">
@@ -127,10 +151,8 @@ export default function OrdersAdminClient() {
       ) : (
         <div className="mt-4 flex flex-col gap-6">
           {sortedEmails.map((email) => {
-            const dateMap = grouped.get(email)!;
-            const sortedDates = Array.from(dateMap.keys()).sort((a, b) =>
-              b.localeCompare(a)
-            );
+            const shipmentMap = grouped.get(email)!;
+            const shipmentKeys = sortedShipmentKeys(shipmentMap);
 
             return (
               <div
@@ -142,26 +164,27 @@ export default function OrdersAdminClient() {
                     {email}
                   </div>
                   <div className="text-xs text-neutral-600">
-                    {sortedDates.reduce(
-                      (acc, d) => acc + (dateMap.get(d)?.length ?? 0),
-                      0
-                    )}
-                    건
+                    {totalCountByEmail(shipmentMap)}건
                   </div>
                 </div>
 
                 <div className="mt-3 flex flex-col gap-4">
-                  {sortedDates.map((date) => {
-                    const list = dateMap.get(date)!;
+                  {shipmentKeys.map((shipmentKey) => {
+                    const list = shipmentMap.get(shipmentKey)!;
+
+                    const title =
+                      shipmentKey === "NO_SHIPMENT"
+                        ? "shipment 없음"
+                        : `shipment #${shipmentKey}`;
 
                     return (
                       <div
-                        key={date}
+                        key={shipmentKey}
                         className="rounded-md border border-neutral-200 bg-white p-3"
                       >
                         <div className="flex items-baseline justify-between">
                           <div className="text-sm font-medium text-neutral-900">
-                            {date}
+                            {title}
                           </div>
                           <div className="text-xs text-neutral-600">
                             {list.length}건
@@ -169,9 +192,22 @@ export default function OrdersAdminClient() {
                         </div>
 
                         <div className="mt-3 flex flex-col gap-2">
-                          {list.map((o) => (
-                            <OrderBlock key={o.orderId} o={o} />
-                          ))}
+                          {list.map((o, idx) => {
+                            const curDate = toDateOnly(o.orderDate);
+                            const prevDate =
+                              idx === 0
+                                ? null
+                                : toDateOnly(list[idx - 1].orderDate);
+
+                            return (
+                              <div key={o.orderId} className="flex flex-col gap-2">
+                                {idx === 0 || curDate !== prevDate ? (
+                                  <DateHeader date={curDate} />
+                                ) : null}
+                                <OrderBlock o={o} />
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     );
